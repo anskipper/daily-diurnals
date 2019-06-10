@@ -70,6 +70,8 @@ bufferBefore = 2 #days
 bufferAfter = 3 #EPA recommends 3 days
 
 def findRain(df,rainthresh,bufferBefore,bufferAfter):
+    startDate = df.index[0]
+    endDate = df.index[-1]
     df['Rain Bool'] = df>rainthresh
     rainDates = df.index[df['Rain Bool']]
     #filter out 2 days before rain
@@ -90,8 +92,9 @@ def findRain(df,rainthresh,bufferBefore,bufferAfter):
 
 df_rainDates = findRain(df_rain,rainthresh=rainthresh,bufferBefore=bufferBefore,bufferAfter=bufferAfter)
 
-df_flow['Weather']='Dry'
+#df_flow['Weather']='Dry'
 def setWeather(df,df_rainDates):
+    df['Weather']='Dry'
     for j in range(0,len(df_rainDates.index)):
         df.loc[df_rainDates.iloc[j,0]:df_rainDates.iloc[j,1],'Weather']='Rain Event'
     return(df)
@@ -259,15 +262,19 @@ snormWKE = findNormSanitaryFlow(df=df_dryWeekend,gwi=gwi,colName = 'Weekend')
 fig6, ax6 = plotTogether(meanLine1=snormWKD,meanLine2=snormWKE,gwi=gwi,color1=colorWkd,color2=colorWke,colorg = colorg,figsize = (12,6),plotgwi=False,plotType = 'normSanitaryFlow',norm=True)
 
 #save snorms to CSV
-df_csv = pd.DataFrame(index=snormWKD.index,columns=['Weekday','Weekend','GWI','Weekday Mean','Weekend Mean'])
-df_csv['Weekday'] = snormWKD
-df_csv['Weekend'] = snormWKE
-sanMeanWKD = findSanMean(df=df_dryWeekday,gwi=gwi)
-sanMeanWKE = findSanMean(df=df_dryWeekend,gwi=gwi)
-df_csv.iloc[0,2:]=[gwi,sanMeanWKD,sanMeanWKE]
+def createcsv(snormWKD,snormWKE,gwi,saveDir,fmName):
+    df_csv = pd.DataFrame(index=snormWKD.index,columns=['Weekday','Weekend','GWI','Weekday Mean','Weekend Mean'])
+    df_csv['Weekday'] = snormWKD
+    df_csv['Weekend'] = snormWKE
+    sanMeanWKD = findSanMean(df=df_dryWeekday,gwi=gwi)
+    sanMeanWKE = findSanMean(df=df_dryWeekend,gwi=gwi)
+    df_csv.iloc[0,2:]=[gwi,sanMeanWKD,sanMeanWKE]
 
-df_csv.index.name = 'Time'
-#saveDir = 'H:'+r'\Big Creek'+r'\Subbasin ' + flowmeter
-saveDir = flowDir + flowmeter
-saveName = flowmeter + '_sanitaryNorm.csv'
-df_csv.to_csv(saveDir+saveName)
+    df_csv.index.name = 'Time'
+    #saveDir = 'H:'+r'\Big Creek'+r'\Subbasin ' + flowmeter
+    #saveDir = flowDir + flowmeter
+    saveName = "\\" + fmName + '_sanitaryNorm.csv'
+    df_csv.to_csv(saveDir+saveName)
+    return(df_csv)
+
+df_csv = createcsv(snormWKD=snormWKD,snormWKE=snormWKE,gwi=gwi,saveDir = flowDir + flowmeter,fmName=fmName)
