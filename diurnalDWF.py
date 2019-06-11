@@ -1,3 +1,4 @@
+### TURN INTO A FUNCTION??
 #import modules
 # pandas for data storage, organization, and manipulation:
 import pandas as pd
@@ -199,8 +200,6 @@ def findGWI(df1,df2,method):
     return(gwi)
 
 gwi = findGWI(df1=df_dryWeekday,df2=df_dryWeekend,method='percent')
-
-#FINISH WRITING THIS PART
 
 def saveCombined(flowmeter,plotType):
     #saveDir = 'H:'+r'\Big Creek'+r'\Subbasin '  + flowmeter

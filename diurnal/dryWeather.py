@@ -132,3 +132,33 @@ def createcsv(snormWKD,snormWKE,dfWKD, dfWKE, gwi,saveDir,fmName):
     saveName = "\\" + fmName + '_sanitaryNorm.csv'
     df_csv.to_csv(saveDir+saveName)
     return(df_csv)
+
+def dryWeatherAnalysis(flowFile,fmname,saveDir,gageFile,rainFile,rainthresh,bufferBefore,bufferAfter):
+    #read in flow file as dataframe with dates for indices
+    df_flow = readSliicer(flowFile)
+    # which gage corresponds to this flowmeter?
+    gageName = findRainGage(filename=gageFile,fmName = fmname)
+    # read in the rain data as a dataframe with dates for indices
+    df_rain = readRain(filename=rainFile,gageName=gageName)
+    # find the overlapping dates between the rain data and the flow data
+    startDate, endDate = defineDateRange(df_flow,df_rain)
+    # chop up the flow and rain dates so that they match the overlapping dates
+    df_flow = df_flow.loc[startDate:endDate,:]
+    df_rain = df_rain.loc[startDate:endDate,:]
+    # find the dates on which there was rain; return a data frame that has the rain dates as indices, the before date (dependent on bufferBefore), and the after date (dependent on the bufferAfter)
+    df_rainDates = findRain(df=df_rain,rainthresh=rainthresh,bufferBefore=bufferBefore,bufferAfter=bufferAfter)
+    # assign a weather catagory to the flow data and assign each date either the value "Dry" or "Rain Event"
+    df_flow = setWeather(df=df_flow,df_rainDates=df_rainDates)
+    # separate into weekdays and weekends
+    df_dryWeekday = findDryDays(df=df_flow,weekCatagory='weekday')
+    df_dryWeekend = findDryDays(df=df_flow,weekCatagory='weekend')
+    #reorganize the flow data such that the indices are time of day, the columns are dates, the values are flow rate
+    df_dryWeekday = reorganizeFlowData(df=df_dryWeekday,colVal='Q (MGD)')
+    df_dryWeekend = reorganizeFlowData(df=df_dryWeekend,colVal='Q (MGD)')
+    # find the groundwater infiltration
+    gwi = findGWI(df1=df_dryWeekday,df2=df_dryWeekend,method='percent')
+    snormWKD = findNormSanitaryFlow(df=df_dryWeekday,gwi=gwi,colName='Weekday')
+    snormWKE = findNormSanitaryFlow(df=df_dryWeekend,gwi=gwi,colName = 'Weekend')
+    # save to csv file
+    df_csv = createcsv(snormWKD=snormWKD,snormWKE=snormWKE,gwi=gwi,saveDir = saveDir,fmName=fmname,dfWKD=df_dryWeekday,dfWKE=df_dryWeekend)
+    return(df_flow,df_dryWeekday,df_dryWeekend,gwi,snormWKD,snormWKE)

@@ -59,3 +59,23 @@ def saveCombined(saveDir,plotType):
     plt.savefig(saveDir+saveName)
     print('Figure saved!')
 
+def plotTogether(meanLine1,meanLine2,gwi,plotgwi,color1,color2,colorg,figsize,plotType,norm,saveDir,fmname):
+    fig, ax = plt.subplots()
+    meanLine1.plot(ax=ax,kind='line',figsize=figsize,legend=False,color=color1,linewidth=2)
+    meanLine2.plot(ax=ax,kind='line',figsize=figsize,legend=False,color=color2,linewidth=2)
+    if plotgwi:
+        ax.plot([meanLine1.index[0],meanLine1.index[-1]],[gwi,gwi],color=colorg,label='GWI',linewidth=2)
+        ax.legend(['Weekday','Weekend','GWI = ' + str(round(gwi,2)) + ' MGD'])
+        ax.set_title(fmname + ': Weekday vs. Weekend, Dry Weather')
+    else:
+        ax.legend(['Weekday','Weekend'])
+        ax.set_title(fmname + ': Normalized Sanitary Flow')
+    prettyxTime(ax)
+    ax.set_ylabel('Q (MGD)')
+    if norm: 
+        ax.set_ylim(bottom=0,top=2)
+    else: 
+        ax.set_ylim(bottom=0,top=1.2*max(meanLine1.max(),meanLine2.max()))
+    ax.set_xlabel('Time of Day')
+    saveCombined(saveDir=saveDir,plotType=plotType)
+    return(fig,ax)
