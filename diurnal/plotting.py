@@ -23,6 +23,7 @@ def plotDiurnalsAll(df,colorAll,colorMean,figsize,weekCatagory,df_flow,fmName,sa
     ax.set_ylim(bottom=0,top=1.1*df.max().max())
     ax.set_xlabel('Time of Day')
     prettyxTime(ax)
+    ax.grid(which='major',color='xkcd:grey',axis='both')
     saveDiurnals(df_flow=df_flow,weekCatagory=weekCatagory,plotType='all',saveDir=saveDir)
     return(fig,ax)
 
@@ -48,7 +49,7 @@ def plotQuantileDiurnals(df,figsize,color,weekCatagory,upQuantile,lowQuantile,df
     quantLow.plot(ax=ax,style='--',linewidth=2,color=color)
     ax.fill_between(meanLine.index,meanLine,quantLow,alpha=0.2,facecolor=color)
     ax.legend(['mean','95' + r'% or 5' + r'% quantile'])
-
+    ax.grid(which='major',color='xkcd:grey',axis='both')
     saveDiurnals(df_flow=df_flow,weekCatagory=weekCatagory,plotType='quantile',saveDir=saveDir)
 
     return(fig,ax)
@@ -77,5 +78,6 @@ def plotTogether(meanLine1,meanLine2,gwi,plotgwi,color1,color2,colorg,figsize,pl
     else: 
         ax.set_ylim(bottom=0,top=1.2*max(meanLine1.max(),meanLine2.max()))
     ax.set_xlabel('Time of Day')
+    ax.grid(which='major',color='xkcd:grey',axis='both')
     saveCombined(saveDir=saveDir,plotType=plotType)
     return(fig,ax)

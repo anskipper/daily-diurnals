@@ -22,6 +22,11 @@ def readRain(filename,gageName):
     df = pd.read_excel(filename,gageName,index_col=0)
     df.index = pd.to_datetime(df.index)
     return(df)
+    
+def readRaintxt(filename,useColList):
+    df = pd.read_csv(filename,sep='\t',usecols=useColList,index_col=0)
+    df.index = pd.to_datetime(df.index)
+    return(df)
 
 # given two data frames with dates as the indices, find the longest overlap in dates
 def defineDateRange(df1,df2):
@@ -109,7 +114,7 @@ def findNormSanitaryFlow(df,gwi,colName):
     sanMean = df_san.mean()
     ki = np.array([])
     for j in range(1,len(df_san),4): #4 meas/hr
-        s = dfMean.iloc[j:j+3]
+        s = df_san.iloc[j:j+3]
         smean = s.mean()
         ki = np.append(ki,smean/sanMean)
     snorm = ki*24/sum(ki) #adjust for the fact the sum should be equal to 24 hrs
@@ -139,7 +144,7 @@ def dryWeatherAnalysis(flowFile,fmname,saveDir,gageFile,rainFile,rainthresh,buff
     # which gage corresponds to this flowmeter?
     gageName = findRainGage(filename=gageFile,fmName = fmname)
     # read in the rain data as a dataframe with dates for indices
-    df_rain = readRain(filename=rainFile,gageName=gageName)
+    df_rain = readRaintxt(filename=rainFile,useColList=['Date',gageName])
     # find the overlapping dates between the rain data and the flow data
     startDate, endDate = defineDateRange(df_flow,df_rain)
     # chop up the flow and rain dates so that they match the overlapping dates
@@ -161,4 +166,4 @@ def dryWeatherAnalysis(flowFile,fmname,saveDir,gageFile,rainFile,rainthresh,buff
     snormWKE = findNormSanitaryFlow(df=df_dryWeekend,gwi=gwi,colName = 'Weekend')
     # save to csv file
     df_csv = createcsv(snormWKD=snormWKD,snormWKE=snormWKE,gwi=gwi,saveDir = saveDir,fmName=fmname,dfWKD=df_dryWeekday,dfWKE=df_dryWeekend)
-    return(df_flow,df_dryWeekday,df_dryWeekend,gwi,snormWKD,snormWKE)
+    return(df_flow,df_dryWeekday,df_dryWeekend,gwi,snormWKD,snormWKE,df_csv)

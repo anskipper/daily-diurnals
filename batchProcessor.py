@@ -2,11 +2,12 @@ from os import walk
 from os import makedirs
 import diurnal.dryWeather as ddwf
 import diurnal.plotting as dplt
+import pandas as pd
 
 # set directories, files, etc
-flowDir = 'P:'+r'\PW-WATER SERVICES'+r'\TECHNICAL SERVICES'+r'\Anna'
-rainFile = 'H:'+ r'\Big Creek' r'\Big Creek Rain Gauges dry days.xlsx'
-gageFile = flowDir + r'\FMtoRG.txt'
+flowDir = 'P:\\PW-WATER SERVICES\\TECHNICAL SERVICES\\Anna'
+rainFile = flowDir + '\\RG_daily_20180101-20190331.txt'
+gageFile = flowDir + '\\FMtoRG.txt'
 
 # set variables
 rainthresh = 0.1 #in
@@ -38,8 +39,8 @@ def findTextFiles(readDir):
 
 folders,textfiles = findTextFiles(readDir=flowDir)
 
-t = textfiles[0:3] #for testing
-
+#t = textfiles[0:3] #for testing
+t = ['BC01A_28660533.txt']
 # for every flowmeter in text files
 for fmData in t: #change t to textfiles after testing
         #find corresponding folder
@@ -55,9 +56,18 @@ for fmData in t: #change t to textfiles after testing
                 #DIURNAL ANALYSIS 
                 #save all the output files to this directory
                 saveDir = flowDir + "\\" + fmname
-                flowFile = flowDir + "\\" + fmname + "\\" + fmData
+                flowFile = flowDir + "\\" + fmData
                 # DRY WEATHER ANALYSIS
-                df_flow,df_dryWeekday,df_dryWeekend,gwi,snormWKD,snormWKE = ddwf.dryWeatherAnalysis(flowFile=flowFile,fmname=fmname,saveDir=saveDir,gageFile=gageFile,rainFile=rainFile,rainthresh=rainthresh,bufferBefore=bufferBefore,bufferAfter=bufferAfter)
+                df_flow,df_dryWeekday,df_dryWeekend,gwi,snormWKD,snormWKE,df_csv = ddwf.dryWeatherAnalysis(flowFile=flowFile,fmname=fmname,saveDir=saveDir,gageFile=gageFile,rainFile=rainFile,rainthresh=rainthresh,bufferBefore=bufferBefore,bufferAfter=bufferAfter)
+
+                wkdMean =df_dryWeekday.mean(axis=1)
+                wkeMean = df_dryWeekend.mean(axis=1)
+                df = pd.DataFrame(index=wkdMean.index,columns=['Weekday','Weekend'])
+                df['Weekday']=wkdMean
+                df['Weekend']=wkeMean
+                df.index.name = 'Time'
+                saveName = "\\" + fmname + '_meanFlows.csv'
+                df.to_csv(saveDir+saveName)
                 #PLOTTING 
                 if plot:
                         # plot weekday mean with all weekday curves
