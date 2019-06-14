@@ -70,9 +70,6 @@ def reconstructTotalFlow(filename):
 
 df_means = reconstructTotalFlow(filename=meanFile)
 
-# for each storm: for j in range(0,len(df_rainDates.index))
-#set day of week
-
 def constructMeanFlow(df_dailyrain,df_rainDates,df_means,stormNum):
     # find the days corresponding to the storm
     weekdayVals = df_dailyrain.loc[df_rainDates.iloc[stormNum,0]:df_rainDates.iloc[stormNum,1],'dayofweek']
@@ -92,38 +89,43 @@ def constructMeanFlow(df_dailyrain,df_rainDates,df_means,stormNum):
     df.index = pd.to_datetime(df.index)
     return(df,color)
 
-dfMeanFlow, color = constructMeanFlow(df_dailyrain = df_dailyrain,df_rainDates=df_rainDates,df_means=df_means,stormNum=0)
+# for each storm: for j in range(0,len(df_rainDates.index))
+#set day of week
+for stormNum in range(0,len(df_rainDates.index)):
+    dfMeanFlow, color = constructMeanFlow(df_dailyrain = df_dailyrain,df_rainDates=df_rainDates,df_means=df_means,stormNum=stormNum)
 
-s_flow = df_flow.loc[df_rainDates.iloc[0,0]:df_rainDates.iloc[0,1] + dt.timedelta(hours=23,minutes=45),'Q (MGD)']
-s_rain = df_rain.loc[df_rainDates.iloc[0,0]:df_rainDates.iloc[0,1] + dt.timedelta(hours=23,minutes=45),gageName]
-s_rain.index = s_flow.index
+    s_flow = df_flow.loc[df_rainDates.iloc[stormNum,0]:df_rainDates.iloc[stormNum,1] + dt.timedelta(hours=23,minutes=45),'Q (MGD)']
+    s_rain = df_rain.loc[df_rainDates.iloc[stormNum,0]:df_rainDates.iloc[stormNum,1] + dt.timedelta(hours=23,minutes=45),gageName]
+    s_rain.index = s_flow.index
 
-#plot for now
-colorWkd = 'xkcd:leaf green'
-colorWke = 'xkcd:hunter green'
-colorMean = 'xkcd:light purple'
-colorRain = 'xkcd:dark sky blue'
-gridColor = 'xkcd:grey'
+    #plot for now
+    colorWkd = 'xkcd:leaf green'
+    colorWke = 'xkcd:hunter green'
+    colorMean = 'xkcd:light purple'
+    colorRain = 'xkcd:dark sky blue'
+    gridColor = 'xkcd:grey'
 
-fig,ax= plt.subplots()
-s_flow.plot(ax=ax,kind='line',color=colorMean,linewidth=2)
-ax.set_ylabel('Q (MGD)')
-ax.set_ylim(bottom=0)
-ax2 = ax.twinx()
-ax2.set_ylabel('i (in)')
-s_rain.plot(ax=ax2,kind='area',color=colorRain,ylim=(0,0.2))
+    fig,ax= plt.subplots()
+    s_flow.plot(ax=ax,kind='line',color=colorMean,linewidth=2)
+    ax.set_ylabel('Q (MGD)')
+    ax.set_ylim(bottom=0,top=1.2*s_flow.max())
+    ax2 = ax.twinx()
+    
+    s_rain.plot(ax=ax2,kind='area',color=colorRain)
+    ax2.set_ylim(bottom=0,top=df_dailyrain.loc[df_rainDates.index[stormNum],gageName])
+    ax2.set_ylabel('i (in)')
 
-# replace 0 with outer for loop
-count = 0
-dates = [df_rainDates.index[0] + dt.timedelta(days=x) for x in range(0,bufferAfter+bufferBefore+1)]
-for date in dates:
-    plotdates = date + dt.timedelta(hours=23,minutes=45)
-    datemask = (dfMeanFlow.index <= date) & (dfMeanFlow.index >= date - dt.timedelta(days=1))
-    dfMeanFlow.loc[datemask,'Mean Flow'].plot(ax=ax,kind='line',color=color[count])
-    count += 1
+    count = 0
+    dates = [df_rainDates.index[stormNum] + dt.timedelta(days=x) for x in range(0, bufferAfter+bufferBefore+1)]
+    for date in dates:
+        plotdates = date + dt.timedelta(hours=23,minutes=45)
+        datemask = (dfMeanFlow.index <= date) & (dfMeanFlow.index >= date -     dt.timedelta(days=1))
+        dfMeanFlow.loc[datemask,'Mean Flow'].plot(ax=ax,kind='line',color=color [count])
+        count += 1
 
-ax.legend(['Q',' weekday mean','weekend mean'])
-ax2.legend(['rain'])
-plt.show()
+    ax.legend(['Q',' weekday mean','weekend mean'],bbox_to_anchor=(0., 1.02, 1., .102), loc=3, borderaxespad=0.,mode='expand',ncol=2)
+    print(df_dailyrain.loc[df_rainDates.index[stormNum],gageName])
+    plt.show()
+    plt.close(fig)
 
 # find volume by integrating (Qi-Qm)over the rain period
