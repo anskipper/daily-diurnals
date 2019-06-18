@@ -15,7 +15,7 @@ bufferBefore = 2 #days
 bufferAfter = 3 #days
 
 # set plotting parameters
-plot = False
+plot = True
 colorAll = 'xkcd:light grey'
 colorWkd = 'xkcd:leaf green'
 colorWke = 'xkcd:hunter green'
@@ -40,11 +40,12 @@ def findTextFiles(readDir):
 folders,textfiles = findTextFiles(readDir=flowDir)
 
 #t = textfiles[0:3] #for testing
-t = ['BC01A_28660533.txt']
+
 # for every flowmeter in text files
-for fmData in t: #change t to textfiles after testing
+for fmData in textfiles: #change t to textfiles after testing
         #find corresponding folder
-        if fmData.startswith('BC') | fmData.startswith('FOR'):
+        #if fmData.startswith('BC') | fmData.startswith('FOR') | 
+        if fmData.startswith('RSPS') :
                 fmname = fmData.split('_') #think about how to do it for temp fms??
                 fmname = fmname[0]
                 #does the directory exist?
