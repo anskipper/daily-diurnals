@@ -2,20 +2,25 @@ from os import walk
 from os import makedirs
 import diurnal.dryWeather as ddwf
 import diurnal.plotting as dplt
+import diurnal.wetWeather as ww
 import pandas as pd
 
 # set directories, files, etc
 flowDir = 'P:\\PW-WATER SERVICES\\TECHNICAL SERVICES\\Anna'
-rainFile = flowDir + '\\RG_daily_20180101-20190331.txt'
 gageFile = flowDir + '\\FMtoRG.txt'
+dailyFile = flowDir + '\\RG_daily_20180101-20190331.txt'
+hourlyFile = flowDir + '\\RG_hourly_20180101-20190331.txt'
 
 # set variables
+dry = False
 rainthresh = 0.1 #in
 bufferBefore = 2 #days
 bufferAfter = 3 #days
 
+wet = True
+
 # set plotting parameters
-plot = True
+plotDry = False
 colorAll = 'xkcd:light grey'
 colorWkd = 'xkcd:leaf green'
 colorWke = 'xkcd:hunter green'
@@ -35,7 +40,7 @@ def findTextFiles(readDir):
         d = sorted(d)
         t = sorted(t)
         return(d,t)
-        break #we only want ot top directory, so break after the first yield
+        #break #we only want ot top directory, so break after the first yield
 
 folders,textfiles = findTextFiles(readDir=flowDir)
 
@@ -44,8 +49,7 @@ folders,textfiles = findTextFiles(readDir=flowDir)
 # for every flowmeter in text files
 for fmData in textfiles: #change t to textfiles after testing
         #find corresponding folder
-        #if fmData.startswith('BC') | fmData.startswith('FOR') | 
-        if fmData.startswith('RSPS') :
+        if fmData.startswith('BC') | fmData.startswith('FOR') | fmData.startswith('RSPS') :
                 fmname = fmData.split('_') #think about how to do it for temp fms??
                 fmname = fmname[0]
                 #does the directory exist?
@@ -58,19 +62,20 @@ for fmData in textfiles: #change t to textfiles after testing
                 #save all the output files to this directory
                 saveDir = flowDir + "\\" + fmname
                 flowFile = flowDir + "\\" + fmData
-                # DRY WEATHER ANALYSIS
-                df_flow,df_dryWeekday,df_dryWeekend,gwi,snormWKD,snormWKE,df_csv = ddwf.dryWeatherAnalysis(flowFile=flowFile,fmname=fmname,saveDir=saveDir,gageFile=gageFile,rainFile=rainFile,rainthresh=rainthresh,bufferBefore=bufferBefore,bufferAfter=bufferAfter)
+                if dry:
+                        # DRY WEATHER ANALYSIS
+                        df_flow,df_dryWeekday,df_dryWeekend,gwi,snormWKD,snormWKE,df_csv = ddwf.dryWeatherAnalysis(flowFile=flowFile,fmname=fmname,saveDir=saveDir,gageFile=gageFile,rainFile=dailyFile,rainthresh=rainthresh,bufferBefore=bufferBefore,bufferAfter=bufferAfter)
 
-                wkdMean =df_dryWeekday.mean(axis=1)
-                wkeMean = df_dryWeekend.mean(axis=1)
-                df = pd.DataFrame(index=wkdMean.index,columns=['Weekday','Weekend'])
-                df['Weekday']=wkdMean
-                df['Weekend']=wkeMean
-                df.index.name = 'Time'
-                saveName = "\\" + fmname + '_meanFlows.csv'
-                df.to_csv(saveDir+saveName)
+                        wkdMean =df_dryWeekday.mean(axis=1)
+                        wkeMean = df_dryWeekend.mean(axis=1)
+                        df = pd.DataFrame(index=wkdMean.index,columns=['Weekday','Weekend'])
+                        df['Weekday']=wkdMean
+                        df['Weekend']=wkeMean
+                        df.index.name = 'Time'
+                        saveName = "\\" + fmname + '_meanFlows.csv'
+                        df.to_csv(saveDir+saveName)
                 #PLOTTING 
-                if plot:
+                if plotDry:
                         # plot weekday mean with all weekday curves
                         fig1,ax1 = dplt.plotDiurnalsAll(df=df_dryWeekday,colorAll=colorAll,colorMean=colorWkd, weekCatagory='Weekday', figsize=figSize,df_flow=df_flow,fmName=fmname,saveDir=saveDir)
                         # plot weekend mean with all weekday curves
@@ -83,6 +88,13 @@ for fmData in textfiles: #change t to textfiles after testing
                         fig5, ax5 = dplt.plotTogether(meanLine1=df_dryWeekday.mean(axis=1),meanLine2=df_dryWeekend.mean(axis=1),gwi=gwi,color1=colorWkd,color2=colorWke,colorg = colorg,figsize = (12,6),plotgwi=True,plotType = 'totalFlow',norm=False,saveDir=saveDir,fmname=fmname)
                         # plot the normalized weekday and weekend sanitary flow (Q - GWI)
                         fig6, ax6 = dplt.plotTogether(meanLine1=snormWKD,meanLine2=snormWKE,gwi=gwi,color1=colorWkd,color2=colorWke,colorg = colorg,figsize = (12,6),plotgwi=False,plotType = 'normSanitaryFlow',norm=True,saveDir=saveDir,fmname=fmname)
+                else:
+                        pass
+                
+                if wet:
+                        meanFile = flowDir+ '\\' + fmname + '\\' + fmname + '_meanFlows.csv'
+                        ww.wetWeather(flowFile=flowFile,gageFile=gageFile,dailyFile=dailyFile,hourlyFile=hourlyFile,meanFile=meanFile,fmname=fmname,flowDir=flowDir)
+                        
                 else:
                         pass
                 print(fmData + ' processing complete!')
