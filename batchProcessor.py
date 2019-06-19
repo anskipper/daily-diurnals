@@ -93,7 +93,7 @@ for fmData in textfiles: #change t to textfiles after testing
                 
                 if wet:
                         meanFile = flowDir+ '\\' + fmname + '\\' + fmname + '_meanFlows.csv'
-                        ww.wetWeather(flowFile=flowFile,gageFile=gageFile,dailyFile=dailyFile,hourlyFile=hourlyFile,meanFile=meanFile,fmname=fmname,flowDir=flowDir)
+                        dfStorms = ww.wetWeather(flowFile=flowFile,gageFile=gageFile,dailyFile=dailyFile,hourlyFile=hourlyFile,meanFile=meanFile,fmname=fmname,flowDir=flowDir)
                         
                 else:
                         pass

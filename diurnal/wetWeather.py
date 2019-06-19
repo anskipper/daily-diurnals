@@ -113,6 +113,7 @@ def wetWeather(flowFile,gageFile,dailyFile,hourlyFile,meanFile,fmname,flowDir):
 
     # add grossVol to storms
     dfStorms['Gross Vol'] = grossVol
-    dfStorms = dfStorms[dfStorms['Gross Vol'] > 0]
+    dfStorms = dfStorms[dfStorms['Gross Vol'] > 0]  
     saveName = flowDir+ '\\' + fmname + '\\' + fmname + '_stormData.csv'
     dfStorms.to_csv(saveName)
+    return(dfStorms)
