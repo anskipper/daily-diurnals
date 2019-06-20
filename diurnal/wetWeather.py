@@ -133,7 +133,6 @@ def findUpstreamFMs(upstreamFile,fmname):
 def readStormData(fmname,flowDir):
     stormFile = flowDir + '\\' + fmname + '\\' + fmname + '_stormData.csv'
     # does the file exist?
-    if 
     dfStorm = pd.read_csv(stormFile,index_col=0)
     sGrossII = dfStorm.loc[:,'Gross Vol']
     return(dfStorm,sGrossII)
