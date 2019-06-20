@@ -44,6 +44,7 @@ from diurnal import dryWeather as dw
 from diurnal import findRainEvents as fRE
 import datetime as dt
 import numpy as np
+import math
 '''
 # set directories, files, etc
 flowDir = 'P:\\PW-WATER SERVICES\\TECHNICAL SERVICES\\Anna'
@@ -65,7 +66,7 @@ def readTotalFlow(filename):
     return(df)
 
 
-def wetWeather(flowFile,gageFile,dailyFile,hourlyFile,meanFile,fmname,flowDir):
+def wetWeather(flowFile,gageFile,dailyFile,hourlyFile,meanFile,fmname,saveDir):
     ######### read in files as pandas dataframes ############
     # FLOW
     dfFlow = dw.readSliicer(filename=flowFile)
@@ -114,6 +115,42 @@ def wetWeather(flowFile,gageFile,dailyFile,hourlyFile,meanFile,fmname,flowDir):
     # add grossVol to storms
     dfStorms['Gross Vol'] = grossVol
     dfStorms = dfStorms[dfStorms['Gross Vol'] > 0]  
-    saveName = flowDir+ '\\' + fmname + '\\' + fmname + '_stormData.csv'
+    saveName = saveDir + '\\' + fmname + '_stormData.csv'
     dfStorms.to_csv(saveName)
     return(dfStorms)
+
+# locates the flow monitor in the file, finds the upstream flow monitors (if they exist), and returns a list of those flow monitors as strings
+def findUpstreamFMs(upstreamFile,fmname):
+    df = pd.read_csv(upstreamFile,index_col=0)
+    usfms = df.loc[fmname,'USFM']
+    if usfms=='None':
+        usfms = [] #return an empty list
+    else:
+        usfms = usfms.split(',') # return the list of upstream flow monitors
+    
+    return(usfms)
+
+def readStormData(fmname,flowDir):
+    stormFile = flowDir + '\\' + fmname + '\\' + fmname + '_stormData.csv'
+    # does the file exist?
+    if 
+    dfStorm = pd.read_csv(stormFile,index_col=0)
+    sGrossII = dfStorm.loc[:,'Gross Vol']
+    return(dfStorm,sGrossII)
+
+def netii(upstreamFile,fmname,flowDir,files=textfiles):
+    # read in the storm data
+    dfStorm, sGrossII = readStormData(fmname=fmname,flowDir=flowDir)
+    usfms = findUpstreamFMs(upstreamFile=upstreamFile,fmname=fmname)
+    sNetII = sGrossII.copy()
+    if not usfms: #if the list is empty
+        # then the gross II is the same as the net and we can just leave it
+        pass
+    else:
+        for fm in usfms:
+            dfStorm_us, sGrossII_us = readStormData(fmname=fm,flowDir=flowDir)
+            sNetII += -sGrossII_us
+    dfStorm['Net Vol'] = sNetII
+    saveName = flowDir + '\\' + fmname + '\\' + fmname + '_stormData.csv'
+    dfStorm.to_csv(saveName)
+    return(dfStorm)

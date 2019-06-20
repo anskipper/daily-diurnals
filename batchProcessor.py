@@ -10,14 +10,16 @@ flowDir = 'P:\\PW-WATER SERVICES\\TECHNICAL SERVICES\\Anna'
 gageFile = flowDir + '\\FMtoRG.txt'
 dailyFile = flowDir + '\\RG_daily_20180101-20190331.txt'
 hourlyFile = flowDir + '\\RG_hourly_20180101-20190331.txt'
+upstreamFile = flowDir + '\\FMtoUpstream.csv'
 
 # set variables
-dry = False
+dry = True
 rainthresh = 0.1 #in
 bufferBefore = 2 #days
 bufferAfter = 3 #days
 
-wet = True
+wet = False
+net = False
 
 # set plotting parameters
 plotDry = False
@@ -44,21 +46,19 @@ def findTextFiles(readDir):
 
 folders,textfiles = findTextFiles(readDir=flowDir)
 
-#t = textfiles[0:3] #for testing
-
 # for every flowmeter in text files
 for fmData in textfiles: #change t to textfiles after testing
         #find corresponding folder
         if fmData.startswith('BC') | fmData.startswith('FOR') | fmData.startswith('RSPS') :
-                fmname = fmData.split('_') #think about how to do it for temp fms??
-                fmname = fmname[0]
+        #if fmData.startswith('FOR'):
+                fmname = fmData.split('_')[0] #think about how to do it for temp fms??
                 #does the directory exist?
                 if fmname not in folders:
                         #make the directory
                         makedirs(flowDir+"\\"+fmname)
                 else:
                    pass
-                #DIURNAL ANALYSIS 
+                ####### DIURNAL ANALYSIS #######
                 #save all the output files to this directory
                 saveDir = flowDir + "\\" + fmname
                 flowFile = flowDir + "\\" + fmData
@@ -74,8 +74,8 @@ for fmData in textfiles: #change t to textfiles after testing
                         df.index.name = 'Time'
                         saveName = "\\" + fmname + '_meanFlows.csv'
                         df.to_csv(saveDir+saveName)
-                #PLOTTING 
-                if plotDry:
+                ######## PLOTTING ########
+                elif plotDry:
                         # plot weekday mean with all weekday curves
                         fig1,ax1 = dplt.plotDiurnalsAll(df=df_dryWeekday,colorAll=colorAll,colorMean=colorWkd, weekCatagory='Weekday', figsize=figSize,df_flow=df_flow,fmName=fmname,saveDir=saveDir)
                         # plot weekend mean with all weekday curves
@@ -88,15 +88,14 @@ for fmData in textfiles: #change t to textfiles after testing
                         fig5, ax5 = dplt.plotTogether(meanLine1=df_dryWeekday.mean(axis=1),meanLine2=df_dryWeekend.mean(axis=1),gwi=gwi,color1=colorWkd,color2=colorWke,colorg = colorg,figsize = (12,6),plotgwi=True,plotType = 'totalFlow',norm=False,saveDir=saveDir,fmname=fmname)
                         # plot the normalized weekday and weekend sanitary flow (Q - GWI)
                         fig6, ax6 = dplt.plotTogether(meanLine1=snormWKD,meanLine2=snormWKE,gwi=gwi,color1=colorWkd,color2=colorWke,colorg = colorg,figsize = (12,6),plotgwi=False,plotType = 'normSanitaryFlow',norm=True,saveDir=saveDir,fmname=fmname)
+                ####### WET WEATHER ANALYSIS, GROSS I&I #######
+                elif wet:
+                        meanFile = saveDir + '\\' + fmname + '_meanFlows.csv'
+                        dfStorms = ww.wetWeather(flowFile=flowFile,gageFile=gageFile,dailyFile=dailyFile,hourlyFile=hourlyFile,meanFile=meanFile,fmname=fmname,saveDir=saveDir)        
+                elif net:
+                        dfStorms = ww.netii(upstreamFile=upstreamFile,fmname=fmname,flowDir=flowDir,files=textfiles)                       
                 else:
                         pass
-                
-                if wet:
-                        meanFile = flowDir+ '\\' + fmname + '\\' + fmname + '_meanFlows.csv'
-                        dfStorms = ww.wetWeather(flowFile=flowFile,gageFile=gageFile,dailyFile=dailyFile,hourlyFile=hourlyFile,meanFile=meanFile,fmname=fmname,flowDir=flowDir)
-                        
-                else:
-                        pass
-                print(fmData + ' processing complete!')
+                print(fmname + ' processing complete!')
         else:
                 pass
