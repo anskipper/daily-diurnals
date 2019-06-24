@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt 
 import numpy as np
-import findRainEvents as fre 
-import wetWeather as ww
-import dryWeather as dw
+import diurnal.findRainEvents as fre 
+import diurnal.wetWeather as ww
+import diurnal.dryWeather as dw
+import datetime as dt
+import pandas as pd
 
 # save the quantile and regular diurnals
 def saveDiurnals(df_flow,weekCatagory,plotType,saveDir):
@@ -86,8 +88,28 @@ def plotTogether(meanLine1,meanLine2,gwi,plotgwi,color1,color2,colorg,figsize,pl
     return(fig,ax)
 
 # plotting the wet weather with the means
-def stormPlot(fmname,stormDate,gageName,meanFile,hourlyFile):
+def stormPlot(fmname,stormDate,gageName,meanFile,hourlyFile,flowFile):
+    dfFlow = dw.readSliicercsv(filename=flowFile)
+
     dfHourly = dw.readRaintxt(filename=hourlyFile,useColList=['DateTime',gageName])
     tStart,eventDur,eventRT,stormDur,stormRT = fre.stormAnalyzer(dfHourly,stormDate,gageName)
     dfMeans = ww.readTotalFlow(filename=meanFile)
-    dfStormMeans,colorMean = fre.constructMeanFlow(tStart,stormDur,dfMeans)
+    sStormMeans,colorMean = fre.constructMeanFlow(tStart,stormDur,dfMeans)
+
+    # timing 
+    # pre-compensation
+    pc = tStart - dt.timedelta(days=1)
+    r2 = tStart + dt.timedelta(hours=stormDur,days=2)
+
+    sFlow = dfFlow.loc[pc:r2,'Q (MGD)']
+    if sFlow.empty:
+        pass
+    else:
+        fig,ax = plt.subplots()
+        sFlow.plot(ax=ax)
+        d = pd.to_datetime(pc.date())
+        for color in colorMean:
+            mask = (sStormMeans.index>=d) & (sStormMeans.index<=d+dt.timedelta(days=1))
+            sStormMeans[mask].plot(ax=ax,color=color)
+            d += dt.timedelta(days=1)
+        ax.set_title(fmname)

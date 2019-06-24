@@ -194,3 +194,34 @@ def netii(upstreamFile,fmname,flowDir):
     saveName = flowDir + '\\' + fmname + '\\' + fmname + '_stormData.csv'
     dfStorm.to_csv(saveName)
     return(dfStorm)
+
+def findDmax(flowFile,date):
+    dfFlow = dw.readSliicercsv(filename=flowFile)
+    mask = (dfFlow.index>=date) & (dfFlow.index<date+dt.timedelta(days=1))
+    sFlow = dfFlow.loc[mask,'y (in)'].sort_values(ascending=False)
+    if sFlow.empty:
+        dmax = float('NaN')
+        t_dmax = float('NaN')
+        dOneThird = float('NaN')
+    else:
+        dmax = sFlow.max()
+        t_dmax = sFlow.idxmax()
+        sFlowHigh = sFlow.iloc[0:int(len(sFlow.index)/3)]
+        dOneThird = sFlowHigh.mean()
+    return(dmax,t_dmax,dOneThird)
+
+from itertools import groupby
+
+
+def findStormsOfSize(drt,dailyFile):
+    dfDaily = pd.read_csv(dailyFile,sep='\t',index_col=0)
+    dfDaily.index = pd.to_datetime(dfDaily.index)
+    stormDates = []
+    for rg in dfDaily.columns:
+        mask = dfDaily[rg] >= drt
+        stormDates.extend(dfDaily.index[mask])
+    stormDates.sort()
+    numRG = [len(list(group)) for key, group in groupby(stormDates)]
+    stormDates = list(set(stormDates))
+    s = pd.Series(data=numRG,index=stormDates)
+    return(s.index[s>3])
