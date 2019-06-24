@@ -10,11 +10,16 @@ def readSliicer(filename):
     df.index = pd.to_datetime(df.index)
     return(df)
 
+def readSliicercsv(filename):
+    df = pd.read_csv(filename,index_col = 0,header=2,usecols=[0,1,2,3],names=['Datetime','y (in)','v (ft/s)','Q (MGD)'])
+    df.index = pd.to_datetime(df.index)
+    return(df)
+
 #finds the rain gage associated with each flow monitor
 def findRainGage(filename,fmName):
     df = pd.read_csv(filename,index_col=0,sep='\t')
     rg = df.loc[fmName][0]
-    print(rg)
+    #print(rg)
     return(rg)
 
 #reads in rain data from excel file and outputs a dataframe with the dates listed as the index and the rain amounts in a columns titled "Rain Total"

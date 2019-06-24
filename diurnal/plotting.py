@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt 
-import numpy as np 
+import numpy as np
+import findRainEvents as fre 
+import wetWeather as ww
+import dryWeather as dw
 
 # save the quantile and regular diurnals
 def saveDiurnals(df_flow,weekCatagory,plotType,saveDir):
@@ -81,3 +84,10 @@ def plotTogether(meanLine1,meanLine2,gwi,plotgwi,color1,color2,colorg,figsize,pl
     ax.grid(which='major',color='xkcd:grey',axis='both')
     saveCombined(saveDir=saveDir,plotType=plotType)
     return(fig,ax)
+
+# plotting the wet weather with the means
+def stormPlot(fmname,stormDate,gageName,meanFile,hourlyFile):
+    dfHourly = dw.readRaintxt(filename=hourlyFile,useColList=['DateTime',gageName])
+    tStart,eventDur,eventRT,stormDur,stormRT = fre.stormAnalyzer(dfHourly,stormDate,gageName)
+    dfMeans = ww.readTotalFlow(filename=meanFile)
+    dfStormMeans,colorMean = fre.constructMeanFlow(tStart,stormDur,dfMeans)

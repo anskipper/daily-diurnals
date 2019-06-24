@@ -65,6 +65,29 @@ def readTotalFlow(filename):
     df.index = df.index.time
     return(df)
 
+def stormGrossVol(stormDate,fmname,gageName,dfHourly,flowFile,meanFile):
+    # find the info about the storm
+    tStart,eventDur,eventRT,stormDur,stormRT = fRE.stormAnalyzer(dfHourly=dfHourly,date=stormDate,gageName=gageName)
+    # go get the mean flow for this monitor
+    df_means = readTotalFlow(filename=meanFile)
+    sMeanFlow, meanColor = fRE.constructMeanFlow(tStart=tStart,stormDur=stormDur,dfMeans=df_means)
+    # go get the instantaneous flow
+    dfFlow = dw.readSliicercsv(filename=flowFile)
+    # pre-compensation period
+    pc = tStart - dt.timedelta(days=1)
+    # end of recovery period 2
+    r2 = tStart + dt.timedelta(days=2,hours=stormDur)
+    # pull the instantaneous flow data for the storm period
+    sFlow = dfFlow.loc[pc:r2, 'Q (MGD)']
+    # calculate the precompensation amount
+    pcAdjust = (sFlow[pc:tStart-dt.timedelta(minutes=15)]-sMeanFlow[pc:tStart-dt.timedelta(minutes=15)]).values.mean()
+    # shift mean Flows by this amount
+    sMeanFlow += pcAdjust
+    # integrate from storm period to end of r2
+    delta = 15.0/24/60 # conversion from measurement increments to days for volume calculation
+    grossVol = delta*np.trapz(sFlow[tStart:r2]-sMeanFlow[tStart:r2])
+    return(grossVol)
+
 
 def wetWeather(flowFile,gageFile,dailyFile,hourlyFile,meanFile,fmname,saveDir):
     ######### read in files as pandas dataframes ############
@@ -137,7 +160,25 @@ def readStormData(fmname,flowDir):
     sGrossII = dfStorm.loc[:,'Gross Vol']
     return(dfStorm,sGrossII)
 
-def netii(upstreamFile,fmname,flowDir,files=textfiles):
+def stormNetII(dfGross,fmName,upstreamFile):
+    netVol = []
+    # set net volume to gross volume
+    gVol = dfGross.loc[fmName,'GrossVol']
+    netVol = gVol.copy()
+    # find upstream flow monitors
+    usfms = findUpstreamFMs(upstreamFile,fmName)
+    if not usfms: #if the list is empty
+        # then the gross II is the same as the net and we can just leave it
+        pass
+    else:
+        for usfm in usfms:
+            usGV = dfGross.loc[usfm,'GrossVol']
+            if usGV > 0:
+                netVol += - usGV
+    return(netVol)
+
+### SHOULD BE WHERE GROSS > 0 ONLY
+def netii(upstreamFile,fmname,flowDir):
     # read in the storm data
     dfStorm, sGrossII = readStormData(fmname=fmname,flowDir=flowDir)
     usfms = findUpstreamFMs(upstreamFile=upstreamFile,fmname=fmname)
