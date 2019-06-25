@@ -10,8 +10,30 @@ def readSliicer(filename):
     df.index = pd.to_datetime(df.index)
     return(df)
 
+#input diameter of pipe and water level (h) in feet; returns cross sectional area in ft**2
+def fluidArea(D,h):
+    r = D/2.0
+    area = r**2*np.arccos((r-h)/r)-(r-h)*np.sqrt(2*r*h-h**2)
+    return(area)
+
+def findDiameter(filename,fmname):
+    df = pd.read_csv(filename,index_col=0,sep='\t')
+    diameter = df.loc[fmname,'Diameter']
+    return(diameter)
+
+def formatFlowFile(df,diameterFile,fmname):
+    if df['sdepth (in)'].isna().all():
+        pass
+    else:
+        D = findDiameter(filename=diameterFile,fmname=fmname)/12.0
+        h = df.loc[:,'sdepth (in)'].values/12.0
+        A = fluidArea(D=D,h=h)
+        conv = 7.48*3600*24/1e6
+        df['Q (MGD)'] = conv*A*df['v (ft/s)']
+    return(df)
+
 def readSliicercsv(filename):
-    df = pd.read_csv(filename,index_col = 0,header=2,usecols=[0,1,2,3],names=['Datetime','y (in)','v (ft/s)','Q (MGD)'])
+    df = pd.read_csv(filename,index_col = 0,header=2,usecols=[0,1,2,3,4],names=['Datetime','sdepth (in)','y (in)','v (ft/s)','Q (MGD)'])
     df.index = pd.to_datetime(df.index)
     return(df)
 

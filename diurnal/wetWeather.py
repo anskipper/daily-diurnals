@@ -65,28 +65,41 @@ def readTotalFlow(filename):
     df.index = df.index.time
     return(df)
 
-def stormGrossVol(stormDate,fmname,gageName,dfHourly,flowFile,meanFile):
+def abstrapz(y,x=None,dx=1.0):
+    y = np.asanyarray(y)
+    if x is None:
+        d = dx
+    else:
+        x = np.asanyarray(x)
+        d = np.diff(x)
+    ret = (d * (y[1:] + y[:-1])/2.0)
+    return(ret[ret>0].sum())
+
+def stormGrossQ(stormDate,fmname,gageName,dfHourly,flowFile,meanFile,diameterFile,format):
     # find the info about the storm
     tStart,eventDur,eventRT,stormDur,stormRT = fRE.stormAnalyzer(dfHourly=dfHourly,date=stormDate,gageName=gageName)
-    # go get the mean flow for this monitor
-    df_means = readTotalFlow(filename=meanFile)
-    sMeanFlow, meanColor = fRE.constructMeanFlow(tStart=tStart,stormDur=stormDur,dfMeans=df_means)
-    # go get the instantaneous flow
-    dfFlow = dw.readSliicercsv(filename=flowFile)
-    # pre-compensation period
-    pc = tStart - dt.timedelta(days=1)
-    # end of recovery period 2
-    r2 = tStart + dt.timedelta(days=2,hours=stormDur)
-    # pull the instantaneous flow data for the storm period
-    sFlow = dfFlow.loc[pc:r2, 'Q (MGD)']
-    # calculate the precompensation amount
-    pcAdjust = (sFlow[pc:tStart-dt.timedelta(minutes=15)]-sMeanFlow[pc:tStart-dt.timedelta(minutes=15)]).values.mean()
-    # shift mean Flows by this amount
-    sMeanFlow += pcAdjust
-    # integrate from storm period to end of r2
-    delta = 15.0/24/60 # conversion from measurement increments to days for volume calculation
-    grossVol = delta*np.trapz(sFlow[tStart:r2]-sMeanFlow[tStart:r2])
-    return(grossVol)
+    if tStart < stormDate:
+        grossQ = [float('NaN')]
+    else:
+        # go get the mean flow for this monitor
+        df_means = readTotalFlow(filename=meanFile)
+        sMeanFlow, meanColor = fRE.constructMeanFlow(tStart=tStart,stormDur=stormDur,dfMeans=df_means)
+        # go get the instantaneous flow
+        dfFlow = dw.readSliicercsv(filename=flowFile)
+        if format:
+            dfFlow = dw.formatFlowFile(df=dfFlow,diameterFile=diameterFile,fmname=fmname)
+        # pre-compensation period
+        pc = tStart - dt.timedelta(days=1)
+        # end of recovery period 2
+        r2 = tStart + dt.timedelta(days=2,hours=stormDur)
+        # pull the instantaneous flow data for the storm period
+        sFlow = dfFlow.loc[pc:r2, 'Q (MGD)']
+        # calculate the precompensation amount
+        pcAdjust = (sFlow[pc:tStart-dt.timedelta(minutes=15)]-sMeanFlow[pc:tStart-dt.timedelta(minutes=15)]).values.mean()
+        # shift mean Flows by this amount
+        sMeanFlow += pcAdjust
+        grossQ = sFlow[tStart:r2]-sMeanFlow[tStart:r2]
+    return(grossQ)
 
 
 def wetWeather(flowFile,gageFile,dailyFile,hourlyFile,meanFile,fmname,saveDir):
@@ -160,6 +173,62 @@ def readStormData(fmname,flowDir):
     sGrossII = dfStorm.loc[:,'Gross Vol']
     return(dfStorm,sGrossII)
 
+def findFile(filelist,filekey):
+    for aFile in filelist:
+        if aFile.startswith(filekey):
+            return(aFile)
+
+def upstreamGrossQ(filelist,usfm,flowDirStorm,gageFile,hourlyFile,homeDir,stormDate,diameterFile):
+    # find that flow monitor in the csv files
+    fmData = findFile(filelist=filelist,filekey=usfm + '_')
+    flowFile = flowDirStorm + '\\' + fmData
+    gageName = dw.findRainGage(filename=gageFile,fmName=usfm)
+    dfHourly = dw.readRaintxt(filename=hourlyFile,useColList=['DateTime',gageName])
+    meanFile = homeDir + '\\' + usfm + '\\' + usfm + '_meanFlows.csv'
+    # get the gross Q for that file
+    grossQus = stormGrossQ(stormDate=stormDate,fmname=usfm,gageName=gageName,dfHourly=dfHourly,flowFile=flowFile,meanFile=meanFile,diameterFile=diameterFile,format=format)
+    return(grossQus)
+
+def stormNetII(upstreamFile,flowDirStorm,fmName,format,diameterFile,filelist,stormDate,gageFile,hourlyFile,homeDir,flowFile,fmsToSkip):
+    gageName = dw.findRainGage(filename=gageFile,fmName=fmName)
+    dfHourly = dw.readRaintxt(filename=hourlyFile,useColList=['DateTime',gageName])
+    meanFile = homeDir + '\\' + fmName+ '\\' + fmName + '_meanFlows.csv'
+
+    grossQ = stormGrossQ(stormDate=stormDate,fmname=fmName,gageName=gageName,dfHourly=dfHourly,flowFile=flowFile,meanFile=meanFile,diameterFile=diameterFile,format=format)
+    
+    netQ = grossQ.copy()
+    usfms = findUpstreamFMs(upstreamFile,fmName)
+    if not usfms: #if the list is empty
+        # then the gross II is the same as the net and we can just leave it
+        pass
+    else:
+        # for each upstream flow monitor
+        for usfm in usfms:
+            if usfm in fmsToSkip:
+                # find all the upstream monitors of that fm
+                U_usfms = findUpstreamFMs(upstreamFile,usfm)
+                # if there are no upstream meters of that one
+                if not U_usfms: #pass
+                    pass
+                else:
+                    for U_usfm in U_usfms:
+                        grossQus = upstreamGrossQ(filelist=filelist,usfm=U_usfm,flowDirStorm=flowDirStorm,gageFile=gageFile,hourlyFile=hourlyFile,homeDir=homeDir,stormDate=stormDate,diameterFile=diameterFile)
+                        netQ += -grossQus
+            else:
+                # find that flow monitor in the csv files
+                fmData = findFile(filelist=filelist,filekey=usfm + '_')
+                flowFile = flowDirStorm + '\\' + fmData
+                gageName = dw.findRainGage(filename=gageFile,fmName=usfm)
+                dfHourly = dw.readRaintxt(filename=hourlyFile,useColList=['DateTime',gageName])
+                meanFile = homeDir + '\\' + usfm + '\\' + usfm + '_meanFlows.csv'
+                # get the gross Q for that file
+                grossQus = stormGrossQ(stormDate=stormDate,fmname=usfm,gageName=gageName,dfHourly=dfHourly,flowFile=flowFile,meanFile=meanFile,diameterFile=diameterFile,format=format)
+                # subtract from downstream value
+                netQ += -grossQus
+        pass
+    return(netQ)
+
+'''
 def stormNetII(dfGross,fmName,upstreamFile):
     netVol = []
     # set net volume to gross volume
@@ -194,11 +263,14 @@ def netii(upstreamFile,fmname,flowDir):
     saveName = flowDir + '\\' + fmname + '\\' + fmname + '_stormData.csv'
     dfStorm.to_csv(saveName)
     return(dfStorm)
-
+'''
 def findDmax(flowFile,date):
     dfFlow = dw.readSliicercsv(filename=flowFile)
     mask = (dfFlow.index>=date) & (dfFlow.index<date+dt.timedelta(days=1))
-    sFlow = dfFlow.loc[mask,'y (in)'].sort_values(ascending=False)
+    if dfFlow['sdepth (in)'].isna().all():
+        sFlow = dfFlow.loc[mask,'y (in)'].sort_values(ascending=False)
+    else:
+        sFlow = dfFlow.loc[mask,'sdepth (in)'].sort_values(ascending=False)
     if sFlow.empty:
         dmax = float('NaN')
         t_dmax = float('NaN')

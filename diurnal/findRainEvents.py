@@ -73,22 +73,29 @@ def getTimeDiff(date1,date2,returnState):
 def stormAnalyzer(dfHourly,date,gageName):
     # find the first value that is on this date and the hourly rain total exceeds 0
     mask = (dfHourly.index>=date) & (dfHourly.index<date+dt.timedelta(days=1)) & (dfHourly.loc[:,gageName]>0)
-    tStart = dfHourly.index[mask][0]
-    # find the time that it stops raining within a 71 hour period
-    # this is the EVENT DURATION
-    mask = (dfHourly.index>=tStart) & (dfHourly.index<tStart+dt.timedelta(days=2,hours=23)) & (dfHourly.loc[:,gageName]>0)
-    dur = getTimeDiff(date1=dfHourly.index[mask][-1],date2=tStart,returnState='hours')
-    # the duration has to be at least 1 hour to count
-    if dur > 0:
-        eventDur = dur
-        #find the rain total within the event duration
-        eventRT = dfHourly.loc[tStart:tStart+dt.timedelta(hours=eventDur),gageName].sum()
-        # set the storm duration as the minimum of the event duration and 24 hours
-        stormDur = min(eventDur,24.0)
-        #find the rain totals within storm duration
-        stormRT = dfHourly.loc[tStart:tStart+dt.timedelta(hours=stormDur),gageName].sum()
+    if dfHourly.index[mask].empty:
+        tStart = date - dt.timedelta(days=1)
+        eventDur = 0
+        eventRT = 0
+        stormDur = 0
+        stormRT = 0
     else:
-        pass
+        tStart = dfHourly.index[mask][0]
+        # find the time that it stops raining within a 71 hour period
+        # this is the EVENT DURATION
+        mask = (dfHourly.index>=tStart) & (dfHourly.index<tStart+dt.timedelta(days=2,hours=23)) & (dfHourly.loc[:,gageName]>0)
+        dur = getTimeDiff(date1=dfHourly.index[mask][-1],date2=tStart,returnState='hours')
+        # the duration has to be at least 1 hour to count
+        if dur > 0:
+            eventDur = dur
+            #find the rain total within the event duration
+            eventRT = dfHourly.loc[tStart:tStart+dt.timedelta(hours=eventDur),gageName].sum()
+            # set the storm duration as the minimum of the event duration and 24 hours
+            stormDur = min(eventDur,24.0)
+            #find the rain totals within storm duration
+            stormRT = dfHourly.loc[tStart:tStart+dt.timedelta(hours=stormDur),gageName].sum()
+        else:
+            pass
     return(tStart,eventDur,eventRT,stormDur,stormRT)
 
 def getStormData(dfDaily,dfHourly,gageName):
@@ -159,6 +166,8 @@ def constructMeanFlow(tStart,stormDur,dfMeans):
     else:
         wVals = [pc.weekday(),tStart.weekday(),r1.weekday(),r2.weekday()]
     
+    colorWkd = 'xkcd:leaf green'
+    colorWke = 'xkcd:hunter green'
     meanFlow = []
     color = []
     for k in range(0,len(wVals)):
@@ -181,8 +190,3 @@ def constructMeanFlow(tStart,stormDur,dfMeans):
     df = pd.Series(data=meanFlow,index=dateTimes,name='Mean Flow')
     df.index = pd.to_datetime(df.index)
     return (df,color)
-
-def findStormAmts(dfDaily,inRain):
-    # for every rain gage
-    for rg in dfDaily.columns:
-        pass

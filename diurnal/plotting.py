@@ -88,8 +88,10 @@ def plotTogether(meanLine1,meanLine2,gwi,plotgwi,color1,color2,colorg,figsize,pl
     return(fig,ax)
 
 # plotting the wet weather with the means
-def stormPlot(fmname,stormDate,gageName,meanFile,hourlyFile,flowFile):
+def stormPlot(fmname,stormDate,gageName,meanFile,hourlyFile,flowFile,diameterFile,format):
     dfFlow = dw.readSliicercsv(filename=flowFile)
+    if format:
+        dfFlow = dw.formatFlowFile(df=dfFlow,diameterFile=diameterFile,fmname=fmname)
 
     dfHourly = dw.readRaintxt(filename=hourlyFile,useColList=['DateTime',gageName])
     tStart,eventDur,eventRT,stormDur,stormRT = fre.stormAnalyzer(dfHourly,stormDate,gageName)
