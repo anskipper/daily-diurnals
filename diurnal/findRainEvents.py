@@ -74,10 +74,10 @@ def stormAnalyzer(dfHourly,date,gageName):
     # find the first value that is on this date and the hourly rain total exceeds 0
     mask = (dfHourly.index>=date) & (dfHourly.index<date+dt.timedelta(days=1)) & (dfHourly.loc[:,gageName]>0)
     if dfHourly.index[mask].empty:
-        tStart = date - dt.timedelta(days=1)
-        eventDur = 0
+        tStart = date
+        eventDur = 71
         eventRT = 0
-        stormDur = 0
+        stormDur = 24
         stormRT = 0
     else:
         tStart = dfHourly.index[mask][0]

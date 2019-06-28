@@ -47,7 +47,6 @@ def findTextFiles(readDir):
         t = sorted(t)
         c = sorted(c)
         return(d,t,c)
-        break
 
 folders,textfiles,csvs = findTextFiles(readDir=flowDir)
 

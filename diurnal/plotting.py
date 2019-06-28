@@ -1,4 +1,5 @@
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import diurnal.findRainEvents as fre 
 import diurnal.wetWeather as ww
@@ -115,3 +116,129 @@ def stormPlot(fmname,stormDate,gageName,meanFile,hourlyFile,flowFile,diameterFil
             sStormMeans[mask].plot(ax=ax,color=color)
             d += dt.timedelta(days=1)
         ax.set_title(fmname)
+
+# candlestick graphs
+# daterange = (startDate,endDate)
+def makeCandlesticks(flowFile,homeDir,fmname,dfrain,gagename,daterange):
+    ############## FORMAT DATA ##############################
+    # read in data file as dataframes
+    dfAll = dw.readSliicer(flowFile)
+    # chop them up
+    df = dfAll.loc[daterange[0]:daterange[1],:]
+    # convert rain to a list
+    rain = list(dfrain.loc[daterange[0]:daterange[1],gagename].values)
+    # reorganize flow data
+    df = dw.reorganizeFlowData(df=df,colVal='Q (MGD)')
+    ################## CREATE LABELS ###########################
+    # create data frame of dates from the original dataframe columns
+    df2 = pd.DataFrame({'original': df.columns})
+    # convert from string into datetime
+    df2['original']=pd.to_datetime(df2.original)
+    # set a column for the labels to the day value as a string
+    df2['label']=df2['original'].dt.strftime('%d')
+    # create a separate column that has the day as an integer
+    df2['dayonly']=df2['original'].dt.day
+    # find the first day of each month and set it to format Jan 1, Feb 1, etc.
+    mask = df2['dayonly']<2
+    df2.loc[mask,'label'] = df2.loc[mask,'original'].dt.strftime('%b')
+    #set label colors
+    df2['rain'] = rain
+    # create list of rain indices for plotting
+    rainIndx = df2.index[df2['rain']>0.5].tolist()
+    ################# CREATE FIGURE #######################
+    fig,ax = plt.subplots(figsize=(20,4))
+    # plot
+    bp = ax.boxplot(df.values,
+                    labels=df2['label'],
+                    sym='+',
+                    patch_artist=True)
+
+    # defaults are weekday colors - xkcd:charcoal for whiskers and fliers, beige for dry weather
+    plt.setp(bp['boxes'],color='xkcd:beige')
+    plt.setp(bp['whiskers'],color='xkcd:grey')
+    plt.setp(bp['fliers'],color='xkcd:grey')
+    plt.setp(bp['medians'],color='xkcd:grape',linewidth=1.2)
+
+    # add light grid
+    ax.yaxis.grid(True,linestyle='-',
+              which='major',
+              color='xkcd:light grey',
+              alpha=0.5)
+    ax.xaxis.grid(True,linestyle='-',
+              which='major',
+              color='xkcd:light grey',
+              alpha=0.5)
+    ax.set_ylabel('Q (MGD)')
+    top = round(1.1*dfAll.max().max())
+    ax.set_ylim(0, top)
+    ax.set_title(str(daterange[0].strftime('%b %Y'))+ ' - ' 
+             + str(daterange[1].strftime('%b %Y')))
+
+    # color for rain
+    count = 0
+    for box in bp['boxes']:
+        if count in rainIndx:
+            box.set_facecolor(color='xkcd:powder blue')
+        count +=1
+    
+    # add rain labels
+    numBoxes = len(df2.label)
+    pos = np.arange(numBoxes) + 1
+    # get the rain values
+    upperLabels = rain
+    count = 0
+    for tick, label in zip(range(numBoxes), ax.get_xticklabels()):
+        if count in rainIndx:
+            ax.text(pos[tick], top - (top*0.08), upperLabels[tick],
+                horizontalalignment='center', size='medium',
+                color='xkcd:medium blue')
+        count+=1
+
+    saveName = homeDir + '\\Big Creek\\' + fmname + '\\'+ fmname +'_' + str(daterange[0].date()) + '-' + str(daterange[1].date()) + '.png'
+    plt.savefig(saveName)
+
+def dftoHeatmap(df,numsplits,figsize,saveDir):
+    iSave = []
+    fms = []
+    for k in range(0,numsplits):
+        if k == 0:
+            indStart = 0
+            indEnd = int(len(df)/numsplits)
+        else:
+            indStart = k*int(len(df)/numsplits)+1
+            indEnd = (k+1)*int(len(df)/numsplits)
+        ii = df.iloc[indStart:indEnd,0]
+        for j in range(0,len(df.columns)):
+            if j>0:
+                ii = np.vstack((ii,df.iloc[indStart:indEnd,j].values))
+        iSave.extend([ii])
+        fms.extend([list(df.index[indStart:indEnd])])
+    
+        # plot for each split
+        fig,ax = plt.subplots(figsize=figsize)
+        plt.pcolor(ii.T, cmap='YlOrRd',vmin = 0, vmax=3)
+        cb = plt.colorbar()
+        cb.ax.set_title('Net I&I')
+    
+        # format axis
+        ax.set_xticks(range(0,len(df.columns)+1))
+        ax.set_yticks(range(0,len(fms[k])+1))
+        ax.grid(b=True,color='xkcd:blue grey',which='major',linewidth=0.5,
+            alpha = 0.5)
+        # Hide major tick labels
+        ax.xaxis.set_major_formatter(ticker.NullFormatter())
+
+        # Customize minor tick labels
+        ax.xaxis.set_minor_locator(ticker.FixedLocator(list(
+            np.linspace(0.5,len(df.columns)-0.5,len(df.columns)))))
+    
+        ax.xaxis.set_minor_formatter(ticker.FixedFormatter(list(df.columns)))
+
+        ax.yaxis.set_major_formatter(ticker.NullFormatter())
+        ax.yaxis.set_minor_locator(ticker.FixedLocator(list(
+            np.linspace(0.5,len(df.index)-0.5,len(df.index)))))
+        ax.yaxis.set_minor_formatter(ticker.FixedFormatter(list(df.index)))
+    
+        saveName = saveDir + 'heatmap_' + fms[k][0] + '-' + fms[k][-1]+ '.png'
+        plt.savefig(saveName)
+        plt.close(fig)
